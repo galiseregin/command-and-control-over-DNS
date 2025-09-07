@@ -1,0 +1,139 @@
+# DNS-based C&C (Command & Control) – Educational Lab Only
+
+This project demonstrates a **DNS-based command-and-control (C&C)** channel between a “victim” host and an “attacker” host. It is intended **strictly for educational purposes** and lab testing in isolated networks.
+
+The project is implemented in Python using the **Scapy library**.
+
+---
+
+##  Disclaimer
+
+- **Do not deploy on public networks.**
+- This project is for **learning network security, DNS tunneling, and covert communication**.
+- Misuse may be illegal and flagged as malware.
+
+---
+
+##  Architecture
+
+Victim (private network)
+| DNS Queries (data exfiltration, beacons)
+v
+Attacker (DNS server / responder)
+
+
+
+- **Victim**: Sends encoded DNS requests to the attacker to signal readiness, send data, and receive commands.
+- **Attacker**: Responds to victim DNS queries with commands encoded in TXT records.
+
+---
+
+##  Features (Lab Only)
+
+- Run shell commands on the victim (`ls`, `dir`, etc.)
+- Transfer files from victim to attacker over DNS
+- Execute files on victim host
+- Beaconing mechanism to maintain connection
+
+---
+
+##  How It Works
+
+### Victim
+
+1. Encodes messages/commands in **Base32**.
+2. Sends messages via **DNS queries** to the attacker’s controlled domain.
+3. Executes received commands:
+   - `Run <command>` → runs the command and returns output.
+   - `Send <filename>` → reads and sends file contents back.
+   - `Exit` → terminates victim process.
+4. Handles data chunking for large payloads due to DNS subdomain length limits (max 63 bytes).
+
+### Attacker
+
+1. Listens for DNS requests from victim.
+2. Decodes the Base32 payloads from DNS subdomains.
+3. Responds via **DNS TXT records** containing commands or acknowledgments.
+4. Manages file chunks and command output assembly.
+5. Supports multiple message types:
+   - `BEACON` → initial victim registration
+   - `CHUNK` → partial data
+   - `EOO` → end of command output
+   - `EOF` → end of file transfer
+
+---
+
+##  File Structure
+
+| File | Description |
+|------|-------------|
+| `attacker_dns.py` | DNS responder, sends commands and handles responses from victim. |
+| `victim_dns.py`   | Victim client, sends beacons, executes commands, and exfiltrates data. |
+| `README.md`       | Project documentation (this file). |
+
+---
+
+##  Configuration
+
+### Domain Setup
+
+- **Own a domain** (e.g., via GoDaddy). Disable auto-renewal if needed.
+- Create DNS records for your attack server:
+  - `NS` record pointing to attacker’s public IP.
+  - `A` record pointing to AWS instance public IP.
+- Example:  
+TYPE: NS NAME: work DATA: work.igorchelsea.store
+TYPE: A NAME: work DATA: <AWS_Public_IP>
+
+
+- Test with:  
+```bash
+nslookup something.work.igorchelsea.store
+Python Settings
+DNS_SERVER → IP of DNS server (attacker)
+
+INTERFACE → network interface to send/receive packets
+
+PORT → DNS port (53)
+
+URL → controlled domain used for tunneling
+
+Chunking:
+
+Maximum 63 bytes per subdomain (for DNS query)
+
+Maximum 255 bytes per TXT record
+
+ Data Flow
+Victim sends BEACON to indicate readiness.
+
+Attacker receives query and responds with encoded command.
+
+Victim executes command and sends output back using chunked Base32 DNS queries.
+
+Attacker reconstructs command output and/or files from chunks.
+
+Process repeats continuously for responsiveness.
+
+🛠 Running (Lab Only)
+Victim:
+
+
+sudo python3 victim_dns.py
+Attacker:
+
+
+sudo python3 attacker_dns.py
+Root privileges required to sniff and send raw DNS packets.
+
+Run in isolated virtual networks (AWS Ubuntu VM, local VMs, or lab network).
+
+ Notes
+Always keep the DNS responder running; otherwise, intermediate DNS servers may respond and break communication.
+
+Consider using Elastic IP for AWS to maintain a stable public IP.
+
+For real labs, consider network monitoring tools like tcpdump to verify traffic:
+
+
+sudo tcpdump -i <interface> port 53

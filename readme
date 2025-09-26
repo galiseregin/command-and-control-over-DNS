@@ -82,7 +82,7 @@ Attacker (DNS server / responder)
   - `NS` record pointing to attacker’s public IP.
   - `A` record pointing to AWS instance public IP.
 - Example:  
-TYPE: NS NAME: work DATA: work.igorchelsea.store
+TYPE: NS NAME: work DATA: work.work.mikaginger.store
 TYPE: A NAME: work DATA: <AWS_Public_IP>
 
 
